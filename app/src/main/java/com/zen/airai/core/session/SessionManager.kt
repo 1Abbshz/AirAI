@@ -6,10 +6,13 @@ import com.zen.airai.data.db.entity.ChatEntity
 import com.zen.airai.data.db.entity.MessageEntity
 import com.zen.airai.data.preferences.PreferencesManager
 import com.zen.airai.data.repository.ChatRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 class SessionManager(
     private val chatRepository: ChatRepository,
@@ -43,19 +46,16 @@ class SessionManager(
         _isGenerating.value = true
 
         try {
-            val messages = chatRepository.getMessages(chatId)
-            val aiMessages = mutableListOf<AiMessage>()
+            val allMessages = chatRepository.getMessagesForChat(chatId).first()
 
-            messages.collect { messageList ->
-                val nonStreaming = messageList.filter { !it.isStreaming }
-                aiMessages.clear()
-                aiMessages.addAll(nonStreaming.map {
-                    AiMessage(role = it.role, content = it.content)
-                })
+            val aiMessages = allMessages.map {
+                AiMessage(role = it.role, content = it.content)
+            }
 
-                val streamMessage = chatRepository.createStreamingMessage(chatId)
-                var accumulated = ""
+            val streamMessage = chatRepository.createStreamingMessage(chatId)
+            var accumulated = ""
 
+            withContext(Dispatchers.IO) {
                 aiClient.chatStream(
                     messages = aiMessages.dropLast(1),
                     systemPrompt = preferences.getSystemPrompt()
@@ -64,10 +64,9 @@ class SessionManager(
                     onToken(accumulated)
                     chatRepository.updateMessageContent(streamMessage.id, accumulated)
                 }
-
-                chatRepository.finalizeStreamingMessage(streamMessage.id, accumulated)
-                return@collect
             }
+
+            chatRepository.finalizeStreamingMessage(streamMessage.id, accumulated)
         } finally {
             _isGenerating.value = false
         }
