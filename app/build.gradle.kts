@@ -20,6 +20,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("debug") {
+            storeFile = file(System.getenv("DEBUG_KEYSTORE") ?: "debug.keystore")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -28,9 +37,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
