@@ -20,12 +20,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file(System.getenv("DEBUG_KEYSTORE") ?: "${System.getProperty("user.home")}/.android/debug.keystore")
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
