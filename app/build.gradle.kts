@@ -21,11 +21,8 @@ android {
     }
 
     signingConfigs {
-        create("debug") {
-            storeFile = file(System.getenv("DEBUG_KEYSTORE") ?: "debug.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+        getByName("debug") {
+            storeFile = file(System.getenv("DEBUG_KEYSTORE") ?: "${System.getProperty("user.home")}/.android/debug.keystore")
         }
     }
 
@@ -37,11 +34,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
-        }
-        debug {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
