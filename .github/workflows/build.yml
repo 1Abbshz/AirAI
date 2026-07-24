@@ -38,6 +38,45 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
+      - name: Re-sign APK with v1+v2+v3
+        run: |
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | sort -V | tail -1)
+          APK_IN=$(ls app/build/outputs/apk/debug/*.apk)
+          APK_ALIGNED=/tmp/app-aligned.apk
+          APK_SIGNED=/tmp/app-signed.apk
+
+          # Generate a keystore for signing
+          keytool -genkeypair -v \
+            -keystore /tmp/signing.keystore \
+            -alias airai \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=AirAI,OU=AirAI,O=AirAI,L=Debug,ST=Debug,C=US"
+
+          # Zipalign
+          $BUILD_TOOLS/zipalign -f 4 "$APK_IN" "$APK_ALIGNED"
+
+          # Copy aligned APK (apksigner signs in-place)
+          cp "$APK_ALIGNED" "$APK_SIGNED"
+
+          # Sign with v1+v2+v3
+          $BUILD_TOOLS/apksigner sign \
+            --ks /tmp/signing.keystore \
+            --ks-key-alias airai \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            "$APK_SIGNED"
+
+          # Replace original APK
+          cp "$APK_SIGNED" "$APK_IN"
+
+          # Verify
+          $BUILD_TOOLS/apksigner verify --verbose "$APK_IN"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
